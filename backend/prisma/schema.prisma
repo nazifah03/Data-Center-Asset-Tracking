@@ -1,0 +1,250 @@
+// ============================================
+// DataCenter Asset Tracker - Prisma Schema
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  ADMIN
+  TECHNICIAN
+}
+
+enum AssetType {
+  SERVER
+  SWITCH
+  ROUTER
+  STORAGE
+  FIREWALL
+  RACK
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+enum ConnectionStatus {
+  ONLINE
+  OFFLINE
+  UNKNOWN
+}
+
+enum MaintenanceType {
+  ROUTINE
+  REPAIR
+  UPGRADE
+  INSPECTION
+  REPLACEMENT
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NotificationType {
+  AI_ALERT
+  MAINTENANCE_REMINDER
+  SYSTEM
+  INFO
+}
+
+// ============================================
+// TABEL 1: users
+// ============================================
+
+model User {
+  id            Int       @id @default(autoincrement())
+  username      String    @unique @db.VarChar(50)
+  email         String    @unique @db.VarChar(100)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  fullName      String    @map("full_name") @db.VarChar(100)
+  role          Role      @default(TECHNICIAN)
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLogin     DateTime? @map("last_login")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relasi
+  maintenanceHistory  MaintenanceHistory[]
+  notifications       Notification[]
+  createdAssets       Asset[]              @relation("CreatedBy")
+
+  @@map("users")
+}
+
+// ============================================
+// TABEL 2: assets
+// ============================================
+
+model Asset {
+  id            Int         @id @default(autoincrement())
+  assetCode     String      @unique @map("asset_code") @db.VarChar(50)
+  assetName     String      @map("asset_name") @db.VarChar(100)
+  assetType     AssetType   @map("asset_type")
+  brand         String?     @db.VarChar(50)
+  model         String?     @db.VarChar(50)
+  serialNumber  String?     @unique @map("serial_number") @db.VarChar(100)
+  purchaseDate  DateTime?   @map("purchase_date") @db.Date
+  warrantyEnd   DateTime?   @map("warranty_end") @db.Date
+  status        AssetStatus @default(ACTIVE)
+  description   String?
+  createdBy     Int?        @map("created_by")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  // Relasi
+  creator             User?                @relation("CreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  locations           AssetLocation[]
+  networkInfo         NetworkInformation?
+  maintenanceHistory  MaintenanceHistory[]
+  aiPredictions       AiPrediction[]
+  notifications       Notification[]
+
+  @@index([status])
+  @@index([assetType])
+  @@index([assetCode])
+  @@map("assets")
+}
+
+// ============================================
+// TABEL 3: asset_locations
+// ============================================
+
+model AssetLocation {
+  id          Int      @id @default(autoincrement())
+  assetId     Int      @map("asset_id")
+  dataCenter  String   @map("data_center") @db.VarChar(50)
+  rack        String?  @db.VarChar(20)
+  rackSlot    String?  @map("rack_slot") @db.VarChar(20)
+  floor       String?  @db.VarChar(20)
+  room        String?  @db.VarChar(50)
+  isCurrent   Boolean  @default(true) @map("is_current")
+  movedAt     DateTime @default(now()) @map("moved_at")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relasi
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, isCurrent])
+  @@map("asset_locations")
+}
+
+// ============================================
+// TABEL 4: network_information
+// ============================================
+
+model NetworkInformation {
+  id                Int              @id @default(autoincrement())
+  assetId           Int              @unique @map("asset_id")
+  hostname          String?          @db.VarChar(100)
+  ipAddress         String?          @map("ip_address") @db.VarChar(45)
+  subnetMask        String?          @map("subnet_mask") @db.VarChar(45)
+  gateway           String?          @db.VarChar(45)
+  macAddress        String?          @map("mac_address") @db.VarChar(17)
+  connectionStatus  ConnectionStatus @default(UNKNOWN) @map("connection_status")
+  lastChecked       DateTime?        @map("last_checked")
+  notes             String?
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  // Relasi
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([ipAddress])
+  @@map("network_information")
+}
+
+// ============================================
+// TABEL 5: maintenance_history
+// ============================================
+
+model MaintenanceHistory {
+  id                Int               @id @default(autoincrement())
+  assetId           Int               @map("asset_id")
+  technicianId      Int?              @map("technician_id")
+  maintenanceType   MaintenanceType   @map("maintenance_type")
+  maintenanceDate   DateTime          @map("maintenance_date") @db.Date
+  description       String?
+  result            String?
+  cost              Decimal?          @db.Decimal(10, 2)
+  nextSchedule      DateTime?         @map("next_schedule") @db.Date
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  // Relasi
+  asset      Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  technician User? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+
+  @@index([assetId])
+  @@index([maintenanceDate])
+  @@map("maintenance_history")
+}
+
+// ============================================
+// TABEL 6: ai_predictions
+// ============================================
+
+model AiPrediction {
+  id                    Int       @id @default(autoincrement())
+  assetId               Int       @map("asset_id")
+  riskScore             Decimal   @map("risk_score") @db.Decimal(5, 2)
+  riskLevel             RiskLevel @map("risk_level")
+  confidence            Decimal?  @db.Decimal(5, 2)
+  topFactors            Json?     @map("top_factors")
+  recommendation        String?
+  predictedFailureDays  Int?      @map("predicted_failure_days")
+  modelVersion          String    @default("v1.0") @map("model_version")
+  predictedAt           DateTime  @default(now()) @map("predicted_at")
+  validUntil            DateTime? @map("valid_until")
+  isActive              Boolean   @default(true) @map("is_active")
+
+  // Relasi
+  asset         Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+
+  @@index([assetId, isActive])
+  @@index([riskLevel])
+  @@map("ai_predictions")
+}
+
+// ============================================
+// TABEL 7: notifications
+// ============================================
+
+model Notification {
+  id            Int              @id @default(autoincrement())
+  userId        Int              @map("user_id")
+  assetId       Int?             @map("asset_id")
+  predictionId  Int?             @map("prediction_id")
+  type          NotificationType @default(INFO)
+  title         String           @db.VarChar(200)
+  message       String
+  isRead        Boolean          @default(false) @map("is_read")
+  readAt        DateTime?        @map("read_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  // Relasi
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset      Asset?        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  prediction AiPrediction? @relation(fields: [predictionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
