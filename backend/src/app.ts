@@ -5,10 +5,11 @@ import morgan from 'morgan';
 import { env } from './config/env';
 import { errorResponse } from './utils/response';
 import authRoutes from './modules/auth/auth.routes';
+import assetRoutes from './modules/asset/asset.routes';
+import maintenanceRoutes from './modules/maintenance/maintenance.routes';
 
 const app: Application = express();
 
-// Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
@@ -29,6 +30,8 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
