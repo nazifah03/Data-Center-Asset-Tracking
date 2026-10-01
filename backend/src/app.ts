@@ -7,6 +7,9 @@ import { errorResponse } from './utils/response';
 import authRoutes from './modules/auth/auth.routes';
 import assetRoutes from './modules/asset/asset.routes';
 import maintenanceRoutes from './modules/maintenance/maintenance.routes';
+import networkRoutes from './modules/network/network.routes';
+import aiRoutes from './modules/ai-prediction/ai.routes';
+import notificationRoutes from './modules/notification/notification.routes';
 
 const app: Application = express();
 
@@ -32,6 +35,10 @@ app.get('/health', (_req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/network', networkRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/notifications', notificationRoutes);
+
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
