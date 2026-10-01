@@ -1,14 +1,14 @@
 /**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
+ * useTheme — Custom hook untuk akses theme colors
+ * Menggabungkan base colors dari template + brand colors kami
  */
 
-import { Colors } from '@/constants/theme';
+import { getColors } from '@/theme/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export function useTheme() {
   const scheme = useColorScheme();
   const theme = scheme === 'unspecified' ? 'light' : scheme;
 
-  return Colors[theme];
+  return getColors(theme);
 }

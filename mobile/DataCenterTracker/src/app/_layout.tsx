@@ -1,18 +1,23 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { useAuthStore } from '@/store/authStore';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+export default function RootLayout() {
+  const loadFromStorage = useAuthStore((s) => s.loadFromStorage);
 
-SplashScreen.preventAutoHideAsync();
+  useEffect(() => {
+    console.log('🔥 RootLayout useEffect — calling loadFromStorage');
+    loadFromStorage().then(() => {
+      console.log('🔥 loadFromStorage done');
+    }).catch((e) => {
+      console.error('🔥 loadFromStorage error:', e);
+    });
+  }, []);
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+    </Stack>
   );
 }
